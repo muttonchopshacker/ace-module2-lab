@@ -101,8 +101,22 @@ router.post('/', (req: Request<Record<string, unknown>, Record<string, unknown>,
       }
 
       if (req.body.layout) {
-        const filePath: string = path.resolve(req.body.layout).toLowerCase()
-        const isForbiddenFile: boolean = (filePath.includes('ftp') || filePath.includes('ctf.key') || filePath.includes('encryptionkeys'))
+        if (typeof req.body.layout !== 'string' || req.body.layout.includes('\0')) {
+          next(new Error('File access not allowed'))
+          return
+        }
+        const viewsPath = path.resolve(__dirname, '../views')
+        const resolvedDirect = path.resolve(req.body.layout)
+        const resolvedFromViews = path.resolve(viewsPath, req.body.layout)
+        const isInViews = resolvedDirect.toLowerCase().startsWith(viewsPath.toLowerCase() + path.sep) ||
+          resolvedFromViews.toLowerCase().startsWith(viewsPath.toLowerCase() + path.sep)
+        const isForbiddenFile: boolean = !isInViews ||
+          resolvedDirect.toLowerCase().includes('ftp') ||
+          resolvedDirect.toLowerCase().includes('ctf.key') ||
+          resolvedDirect.toLowerCase().includes('encryptionkeys') ||
+          resolvedFromViews.toLowerCase().includes('ftp') ||
+          resolvedFromViews.toLowerCase().includes('ctf.key') ||
+          resolvedFromViews.toLowerCase().includes('encryptionkeys')
         if (!isForbiddenFile) {
           res.render('dataErasureResult', {
             ...req.body,
